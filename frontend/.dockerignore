@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.angular/
+.vscode/
+.idea/
+*.log
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+.env
+.env.local
+*.spec.ts
+e2e/
+
