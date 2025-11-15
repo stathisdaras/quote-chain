@@ -19,6 +19,9 @@ import { MessageModule } from 'primeng/message';
 import { TooltipModule } from 'primeng/tooltip';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { InputTextareaModule } from 'primeng/inputtextarea';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService, MessageService } from 'primeng/api';
+import { ToastModule } from 'primeng/toast';
 
 @NgModule({
   declarations: [
@@ -41,9 +44,11 @@ import { InputTextareaModule } from 'primeng/inputtextarea';
     MessageModule,
     TooltipModule,
     InputSwitchModule,
-    InputTextareaModule
+    InputTextareaModule,
+    ConfirmDialogModule,
+    ToastModule
   ],
-  providers: [],
+  providers: [ConfirmationService, MessageService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

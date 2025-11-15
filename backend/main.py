@@ -13,6 +13,7 @@ import csv
 import io
 from dotenv import load_dotenv
 import pandas as pd
+import chromadb
 
 # Load environment variables
 load_dotenv()
@@ -311,13 +312,41 @@ async def clear_highlights():
     """Clear all stored highlights."""
     global vector_store
     try:
+        # First, try to delete all documents if vector_store exists
         if vector_store is not None:
             collection = vector_store._collection
-            collection.delete()
+            
+            # Get all document IDs first
+            try:
+                results = collection.get()
+                ids = results.get('ids', [])
+                
+                if ids:
+                    # Delete all documents by their IDs
+                    collection.delete(ids=ids)
+            except Exception as e:
+                # If get() fails, collection might be empty or have issues
+                pass
+            
+            # Reset the vector store so it gets recreated on next use
             vector_store = None
+        
+        # Also delete the collection from ChromaDB to ensure everything is cleared
+        # This handles the case where vector_store was None or deletion failed
+        try:
+            client = chromadb.PersistentClient(path="./chroma_db")
+            try:
+                client.delete_collection(name="highlights")
+            except Exception as e:
+                # Collection might not exist, which is fine
+                pass
+        except Exception as e:
+            # If we can't delete the collection, the IDs deletion should have worked
+            pass
+            
         return {"message": "All highlights cleared successfully"}
     except Exception as e:
-        return {"message": f"Error clearing highlights: {str(e)}"}
+        raise HTTPException(status_code=500, detail=f"Error clearing highlights: {str(e)}")
 
 
 @app.post("/rag/chat", response_model=RAGChatResponse)

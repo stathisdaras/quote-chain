@@ -1,12 +1,36 @@
 <div class="tool-bar">
+  <p-confirmDialog></p-confirmDialog>
+  <p-toast></p-toast>
+
   <div class="upload-section">
     <div class="upload-controls">
-      <p-button 
-        label="CSV"
-        icon="pi pi-upload"
-        (onClick)="onUploadButtonClick()"
-        styleClass="p-button-success"
-      ></p-button>
+      <div class="button-group">
+        <p-button 
+          label="CSV"
+          icon="pi pi-upload"
+          (onClick)="onUploadButtonClick()"
+          styleClass="p-button-success"
+        ></p-button>
+        <p-button 
+          (onClick)="onNukemClick()"
+          styleClass="p-button-danger"
+          pTooltip="Delete all highlights permanently"
+          tooltipPosition="bottom"
+        >
+          <ng-template pTemplate="content">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 0.5rem; vertical-align: middle;">
+              <!-- Mushroom cloud - top mushroom shape -->
+              <path d="M12 3C8.13 3 5 6.13 5 10c0 1.5.6 2.87 1.58 3.87L6 17h12l-.58-3.13C18.4 12.87 19 11.5 19 10c0-3.87-3.13-7-7-7z" fill="currentColor"/>
+              <!-- Mushroom cloud - stem -->
+              <rect x="11" y="17" width="2" height="4" fill="currentColor"/>
+              <!-- Mushroom cloud - base explosion -->
+              <ellipse cx="12" cy="22" rx="7" ry="2" fill="currentColor" opacity="0.7"/>
+              <ellipse cx="12" cy="21.5" rx="5" ry="1.5" fill="currentColor" opacity="0.5"/>
+            </svg>
+            <span>Nuke</span>
+          </ng-template>
+        </p-button>
+      </div>
       <div class="rag-toggle-container">
         <label class="rag-label" 
                pTooltip="RAG (Retrieval-Augmented Generation) mode combines semantic search with AI model responses. When enabled, search results are presented as a chatbot conversation instead of a table, using the top 10 most relevant highlights to generate contextual answers."

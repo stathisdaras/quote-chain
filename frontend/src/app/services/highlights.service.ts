@@ -3,7 +3,9 @@ import { HttpClient, HttpEvent } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 // Use '/api' for Docker (proxied by nginx), 'http://localhost:8000' for local development
-const API_URL = '/api';
+// Check if we're in development mode (Angular dev server) or production (Docker)
+const isDevelopment = window.location.hostname === 'localhost' && window.location.port === '4200';
+const API_URL = isDevelopment ? 'http://localhost:8000' : '/api';
 
 export interface SearchRequest {
   prompt: string;

@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { HighlightsService, SearchRequest, SearchResult, UploadResponse, RAGChatRequest } from '../../services/highlights.service';
+import { ConfirmationService, MessageService } from 'primeng/api';
 
 @Component({
   selector: 'app-tool-bar',
@@ -35,7 +36,11 @@ export class ToolBarComponent implements OnInit {
   currentChatInput = '';
   isGeneratingResponse = false;
 
-  constructor(private highlightsService: HighlightsService) { }
+  constructor(
+    private highlightsService: HighlightsService,
+    private confirmationService: ConfirmationService,
+    private messageService: MessageService
+  ) { }
 
   ngOnInit(): void {
     if (!this.ragEnabled) {
@@ -274,6 +279,45 @@ export class ToolBarComponent implements OnInit {
     } else {
       this.loadHighlights();
     }
+  }
+
+  onNukemClick(): void {
+    this.confirmationService.confirm({
+      message: 'Are you sure you want to NUKE all highlights? This action cannot be undone!',
+      header: '⚠️ NUKE Confirmation',
+      icon: 'pi pi-exclamation-triangle',
+      acceptButtonStyleClass: 'p-button-danger',
+      acceptLabel: 'Yes, NUKE them all',
+      rejectLabel: 'Cancel',
+      accept: () => {
+        this.nukeHighlights();
+      }
+    });
+  }
+
+  nukeHighlights(): void {
+    this.highlightsService.clearHighlights().subscribe({
+      next: () => {
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Nuked!',
+          detail: 'All highlights have been destroyed.',
+          life: 3000
+        });
+        // Clear search and reload
+        this.clearSearch();
+        this.first = 0;
+        this.loadHighlights();
+      },
+      error: (error) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Nuke Failed',
+          detail: error.error?.detail || 'Failed to clear highlights. Please try again.',
+          life: 5000
+        });
+      }
+    });
   }
 }
 
