@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { HighlightsService, SearchRequest, SearchResult, UploadResponse } from '../../services/highlights.service';
+import { HighlightsService, SearchRequest, SearchResult, UploadResponse, RAGChatRequest } from '../../services/highlights.service';
 
 @Component({
   selector: 'app-tool-bar',
@@ -29,10 +29,18 @@ export class ToolBarComponent implements OnInit {
   rows = 10;
   isSearchMode = false;
 
+  // RAG properties
+  ragEnabled = false;
+  chatMessages: Array<{role: 'user' | 'assistant', content: string, timestamp: Date}> = [];
+  currentChatInput = '';
+  isGeneratingResponse = false;
+
   constructor(private highlightsService: HighlightsService) { }
 
   ngOnInit(): void {
-    this.loadHighlights();
+    if (!this.ragEnabled) {
+      this.loadHighlights();
+    }
   }
 
   loadHighlights(): void {
@@ -158,6 +166,13 @@ export class ToolBarComponent implements OnInit {
       return;
     }
 
+    // If RAG mode is enabled, use chat instead of table search
+    if (this.ragEnabled) {
+      this.performRAGChat();
+      return;
+    }
+
+    // Regular table search
     this.isSearching = true;
     this.searchError = '';
     this.searchResults = [];
@@ -191,6 +206,62 @@ export class ToolBarComponent implements OnInit {
     });
   }
 
+  performRAGChat(): void {
+    if (!this.searchPrompt.trim()) {
+      return;
+    }
+
+    // Add user message to chat
+    this.chatMessages.push({
+      role: 'user',
+      content: this.searchPrompt.trim(),
+      timestamp: new Date()
+    });
+
+    this.isGeneratingResponse = true;
+    this.searchError = '';
+
+    const request: RAGChatRequest = {
+      prompt: this.searchPrompt.trim()
+    };
+
+    // Parse tags if provided
+    if (this.tags.trim()) {
+      request.tags = this.tags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0);
+    }
+
+    this.highlightsService.ragChat(request).subscribe({
+      next: (response) => {
+        // Add assistant response to chat
+        this.chatMessages.push({
+          role: 'assistant',
+          content: response.response,
+          timestamp: new Date()
+        });
+        this.isGeneratingResponse = false;
+        this.searchPrompt = ''; // Clear input after sending
+      },
+      error: (error) => {
+        this.searchError = error.error?.detail || 'Error generating response. Please try again.';
+        this.isGeneratingResponse = false;
+        // Remove the user message if there was an error
+        if (this.chatMessages.length > 0 && this.chatMessages[this.chatMessages.length - 1].role === 'user') {
+          this.chatMessages.pop();
+        }
+      }
+    });
+  }
+
+  onRAGToggled(): void {
+    // Clear chat when disabling RAG
+    if (!this.ragEnabled) {
+      this.chatMessages = [];
+    }
+  }
+
   clearSearch(): void {
     this.searchPrompt = '';
     this.tags = '';
@@ -198,7 +269,11 @@ export class ToolBarComponent implements OnInit {
     this.searchError = '';
     this.first = 0;
     this.isSearchMode = false;
-    this.loadHighlights();
+    if (this.ragEnabled) {
+      this.chatMessages = [];
+    } else {
+      this.loadHighlights();
+    }
   }
 }
 

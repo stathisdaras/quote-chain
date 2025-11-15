@@ -17,6 +17,8 @@ import { DialogModule } from 'primeng/dialog';
 import { CheckboxModule } from 'primeng/checkbox';
 import { MessageModule } from 'primeng/message';
 import { TooltipModule } from 'primeng/tooltip';
+import { InputSwitchModule } from 'primeng/inputswitch';
+import { InputTextareaModule } from 'primeng/inputtextarea';
 
 @NgModule({
   declarations: [
@@ -37,7 +39,9 @@ import { TooltipModule } from 'primeng/tooltip';
     DialogModule,
     CheckboxModule,
     MessageModule,
-    TooltipModule
+    TooltipModule,
+    InputSwitchModule,
+    InputTextareaModule
   ],
   providers: [],
   bootstrap: [AppComponent]

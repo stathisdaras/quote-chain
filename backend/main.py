@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
-from langchain_openai import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores import Chroma
 import os
 import csv
@@ -53,6 +53,16 @@ class SearchResult(BaseModel):
     book_author: str
     tags: List[str]
     score: float
+
+
+class RAGChatRequest(BaseModel):
+    prompt: str
+    tags: Optional[List[str]] = None
+
+
+class RAGChatResponse(BaseModel):
+    response: str
+    sources: List[SearchResult]
 
 
 @app.get("/")
@@ -308,6 +318,107 @@ async def clear_highlights():
         return {"message": "All highlights cleared successfully"}
     except Exception as e:
         return {"message": f"Error clearing highlights: {str(e)}"}
+
+
+@app.post("/rag/chat", response_model=RAGChatResponse)
+async def rag_chat(request: RAGChatRequest):
+    """
+    RAG (Retrieval-Augmented Generation) chat endpoint.
+    Combines semantic search (top 10 results) with LLM to generate contextual responses.
+    """
+    if not request.prompt:
+        raise HTTPException(status_code=400, detail="Chat prompt is required")
+
+    try:
+        # Get vector store
+        vectorstore = get_vector_store()
+        
+        # Perform semantic search to get top 10 results
+        search_k = 10
+        docs_with_scores = vectorstore.similarity_search_with_score(
+            request.prompt, k=search_k
+        )
+
+        # Format search results and apply tag filtering
+        search_results = []
+        for doc, score in docs_with_scores:
+            metadata = doc.metadata if hasattr(doc, "metadata") else {}
+            
+            # Parse tags from metadata
+            tags_str = metadata.get("tags", "")
+            tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
+
+            # Filter by tags if specified
+            if request.tags:
+                if not any(tag.lower() in [t.lower() for t in tags] for tag in request.tags):
+                    continue
+
+            # Convert distance to similarity score
+            similarity_score = 1.0 - min(abs(score), 1.0)
+
+            search_results.append(
+                SearchResult(
+                    content=doc.page_content,
+                    book_title=metadata.get("book_title", "Unknown"),
+                    book_author=metadata.get("book_author", "Unknown"),
+                    tags=tags,
+                    score=round(similarity_score, 4),
+                )
+            )
+
+            # Stop if we have enough results
+            if len(search_results) >= 10:
+                break
+
+        if not search_results:
+            raise HTTPException(
+                status_code=404, detail="No highlights found matching the criteria."
+            )
+
+        # Prepare context from search results
+        context_parts = []
+        for i, result in enumerate(search_results, 1):
+            context_parts.append(
+                f"[{i}] From '{result.book_title}'"
+                + (f" by {result.book_author}" if result.book_author else "")
+                + f": {result.content}"
+            )
+        context = "\n\n".join(context_parts)
+
+        # Initialize LLM
+        llm = ChatOpenAI(
+            model_name="gpt-3.5-turbo",
+            temperature=0.7,
+            openai_api_key=OPENAI_API_KEY
+        )
+
+        # Generate response using the context
+        from langchain_core.messages import HumanMessage, SystemMessage
+        
+        system_message = f"""You are a helpful assistant that answers questions based on the provided highlights from books.
+
+Use the following highlights as context to answer the user's question. If the answer cannot be found in the highlights, say so.
+
+Highlights:
+{context}"""
+
+        messages = [
+            SystemMessage(content=system_message),
+            HumanMessage(content=request.prompt)
+        ]
+
+        response = llm.invoke(messages)
+        response_text = response.content
+
+        return RAGChatResponse(
+            response=response_text,
+            sources=search_results
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating RAG response: {str(e)}")
 
 
 if __name__ == "__main__":

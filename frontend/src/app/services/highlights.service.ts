@@ -34,6 +34,16 @@ export interface HighlightsResponse {
   limit: number;
 }
 
+export interface RAGChatRequest {
+  prompt: string;
+  tags?: string[];
+}
+
+export interface RAGChatResponse {
+  response: string;
+  sources: SearchResult[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -60,5 +70,9 @@ export class HighlightsService {
 
   clearHighlights(): Observable<{ message: string }> {
     return this.http.delete<{ message: string }>(`${API_URL}/highlights/clear`);
+  }
+
+  ragChat(request: RAGChatRequest): Observable<RAGChatResponse> {
+    return this.http.post<RAGChatResponse>(`${API_URL}/rag/chat`, request);
   }
 }

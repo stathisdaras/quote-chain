@@ -1,11 +1,22 @@
 <div class="tool-bar">
   <div class="upload-section">
-    <p-button 
-      label="CSV"
-      icon="pi pi-upload"
-      (onClick)="onUploadButtonClick()"
-      styleClass="p-button-success"
-    ></p-button>
+    <div class="upload-controls">
+      <p-button 
+        label="CSV"
+        icon="pi pi-upload"
+        (onClick)="onUploadButtonClick()"
+        styleClass="p-button-success"
+      ></p-button>
+      <div class="rag-toggle-container">
+        <label class="rag-label" 
+               pTooltip="RAG (Retrieval-Augmented Generation) mode combines semantic search with AI model responses. When enabled, search results are presented as a chatbot conversation instead of a table, using the top 10 most relevant highlights to generate contextual answers."
+               tooltipPosition="bottom">RAG</label>
+        <p-inputSwitch 
+          [(ngModel)]="ragEnabled"
+          (onChange)="onRAGToggled()"
+        ></p-inputSwitch>
+      </div>
+    </div>
   </div>
 
   <p-dialog 
@@ -78,7 +89,7 @@
         type="text" 
         pInputText
         [(ngModel)]="searchPrompt" 
-        placeholder="Search highlights..."
+        [placeholder]="ragEnabled ? 'Ask a question about your highlights...' : 'Search highlights...'"
         class="search-input"
         (keyup.enter)="onSearch()"
       />
@@ -93,23 +104,49 @@
       <p-button 
         label=""
         icon="pi pi-search"
-        [loading]="isSearching"
+        [loading]="isSearching || isGeneratingResponse"
         (onClick)="onSearch()"
-        [disabled]="isSearching || !searchPrompt.trim()"
+        [disabled]="(isSearching || isGeneratingResponse) || !searchPrompt.trim()"
         styleClass="p-button-success"
       ></p-button>
       <p-button 
         label=""
         icon="pi pi-times"
         (onClick)="clearSearch()"
-        [disabled]="isSearching"
+        [disabled]="isSearching || isGeneratingResponse"
         styleClass="p-button-secondary"
       ></p-button>
     </div>
     <div *ngIf="searchError" class="error-message">{{ searchError }}</div>
   </div>
 
-  <div class="highlights-container">
+  <!-- Chatbot UI when RAG is enabled -->
+  <div *ngIf="ragEnabled" class="chat-container">
+    <div class="chat-messages">
+      <div *ngFor="let message of chatMessages" class="chat-message" [ngClass]="'chat-message-' + message.role">
+        <div class="message-content">
+          <div class="message-role">{{ message.role === 'user' ? 'You' : 'Assistant' }}</div>
+          <div class="message-text">{{ message.content }}</div>
+        </div>
+      </div>
+      <div *ngIf="isGeneratingResponse" class="chat-message chat-message-assistant">
+        <div class="message-content">
+          <div class="message-role">Assistant</div>
+          <div class="message-text">
+            <i class="pi pi-spin pi-spinner" style="margin-right: 0.5rem;"></i>
+            Generating response...
+          </div>
+        </div>
+      </div>
+      <div *ngIf="chatMessages.length === 0 && !isGeneratingResponse" class="chat-empty">
+        <p>Start a conversation by asking a question about your highlights.</p>
+        <p class="chat-hint">Example: "What did Steve Jobs say about work?"</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table UI when RAG is disabled -->
+  <div *ngIf="!ragEnabled" class="highlights-container">
     <p-table 
       [value]="highlights" 
       [loading]="isLoadingHighlights || isSearching"

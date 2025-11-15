@@ -41,9 +41,19 @@ This will:
 ## Features
 
 - **Upload Highlights**: Upload CSV files containing highlights with metadata (book title, author, tags)
+  - Upload dialog with file selection
+  - Overwrite option to replace all existing highlights
+  - Warning system for destructive operations
 - **Semantic Search**: Search through highlights using natural language queries
-- **Tag Filtering**: Optionally filter search results by tags
-- **Modern UI**: Clean, responsive Angular frontend
+  - Table view with pagination
+  - Tag filtering support
+  - Relevance scoring
+- **RAG Mode (Retrieval-Augmented Generation)**: AI-powered chatbot interface
+  - Toggle between table view and chatbot mode
+  - Combines semantic search (top 10 results) with AI model responses
+  - Conversational interface for asking questions about highlights
+  - Context-aware answers based on your highlights
+- **Modern UI**: Clean, responsive Angular frontend built with PrimeNG components
 
 ## Backend Setup
 
@@ -158,9 +168,20 @@ Highlight,Book Title,Book Author,Tags
 ./start.sh
 ```
 3. Open `http://localhost:4200` in your browser
-4. Upload a CSV file with your highlights
-5. Use the search bar to perform semantic searches
-6. Optionally add tags to filter search results
+4. Upload a CSV file with your highlights:
+   - Click the "CSV" button to open the upload dialog
+   - Select your CSV file
+   - Optionally enable "Overwrite existing entries" to replace all highlights
+   - Click "Upload"
+5. **Table Mode (Default)**:
+   - Use the search bar to perform semantic searches
+   - Results are displayed in a paginated table
+   - Optionally add tags to filter search results
+6. **RAG Mode (Chatbot)**:
+   - Toggle the "RAG" switch on the right side of the upload button
+   - Ask questions about your highlights in natural language
+   - Receive AI-generated responses based on the top 10 most relevant highlights
+   - Chat history is maintained during your session
 
 ### Manual Start
 
@@ -168,8 +189,8 @@ Highlight,Book Title,Book Author,Tags
 2. Start the frontend development server (see Frontend Setup)
 3. Open `http://localhost:4200` in your browser
 4. Upload a CSV file with your highlights
-5. Use the search bar to perform semantic searches
-6. Optionally add tags to filter search results
+5. Choose between Table Mode or RAG Mode (Chatbot)
+6. Search or chat with your highlights
 
 ## API Endpoints
 
@@ -177,22 +198,56 @@ Highlight,Book Title,Book Author,Tags
 Upload a CSV file with highlights.
 
 ### POST `/search`
-Perform semantic search on highlights.
+Perform semantic search on highlights. Returns all matching results (no limit by default).
 
 Request body:
 ```json
 {
   "prompt": "What did Steve Jobs say about work?",
-  "limit": 5,
+  "limit": null,
   "tags": ["philosophy", "work"]
 }
 ```
+
+### GET `/highlights`
+Get all highlights with pagination.
+
+Query parameters:
+- `skip` (default: 0) - Number of records to skip
+- `limit` (default: 10) - Number of records to return
 
 ### GET `/highlights/count`
 Get the total number of stored highlights.
 
 ### DELETE `/highlights/clear`
 Clear all stored highlights.
+
+### POST `/rag/chat`
+RAG (Retrieval-Augmented Generation) chat endpoint. Combines semantic search with AI model to generate contextual responses.
+
+Request body:
+```json
+{
+  "prompt": "What did Steve Jobs say about work?",
+  "tags": ["philosophy", "work"]
+}
+```
+
+Response:
+```json
+{
+  "response": "Based on the highlights, Steve Jobs emphasized...",
+  "sources": [
+    {
+      "content": "The only way to do great work is to love what you do.",
+      "book_title": "The Steve Jobs Biography",
+      "book_author": "Walter Isaacson",
+      "tags": ["philosophy", "work"],
+      "score": 0.95
+    }
+  ]
+}
+```
 
 ## Development
 
@@ -212,9 +267,32 @@ cd frontend
 npm start
 ```
 
+## Features in Detail
+
+### Upload Dialog
+- **File Selection**: Click "Choose File" to select a CSV file
+- **Overwrite Mode**: When enabled, all existing highlights are deleted before uploading new ones
+- **Warning System**: Clear warnings when overwrite mode is enabled
+- **Error Handling**: Displays errors if upload fails
+
+### Table Mode
+- **Pagination**: Browse all highlights with configurable page sizes (10, 25, 50)
+- **Search**: Semantic search returns all matching results
+- **Tag Filtering**: Filter results by comma-separated tags
+- **Relevance Scoring**: See how relevant each result is to your query
+
+### RAG Mode (Chatbot)
+- **Toggle Switch**: Enable/disable RAG mode with a slide toggle
+- **Chat Interface**: Conversational UI with user and assistant messages
+- **Context-Aware**: Uses top 10 semantic search results as context
+- **AI Responses**: GPT-3.5-turbo generates answers based on your highlights
+- **Chat History**: Maintains conversation history during session
+
 ## Notes
 
 - ChromaDB stores data locally in the `backend/chroma_db/` directory
-- OpenAI API key is required for both storing and searching highlights
+- OpenAI API key is required for storing highlights, searching, and RAG chat
 - The API key should be set in environment variables or a `.env` file
 - Embeddings are generated using OpenAI's text-embedding-3-small model (default)
+- RAG mode uses GPT-3.5-turbo for generating responses
+- When RAG mode is enabled, search queries are processed as chat messages instead of table searches
