@@ -6,20 +6,66 @@ A modular application for storing and semantically searching through your highli
 
 ```
 quote-chain/
-├── start.sh         # Start script (starts both backend and frontend)
-├── backend/          # Python FastAPI backend
-│   ├── main.py      # FastAPI application
+├── docker-compose.yml  # Docker Compose configuration
+├── start.sh            # Start script (starts both backend and frontend)
+├── backend/            # Python FastAPI backend
+│   ├── Dockerfile     # Backend Docker image
+│   ├── main.py        # FastAPI application
 │   ├── requirements.txt
-│   ├── chroma_db/   # Vector database storage
+│   ├── chroma_db/     # Vector database storage
 │   └── ...
-└── frontend/        # Angular frontend
+└── frontend/           # Angular frontend
+    ├── Dockerfile     # Frontend Docker image
+    ├── nginx.conf     # Nginx configuration for production
+    ├── proxy.conf.json # Proxy config for local development
     ├── src/
     └── ...
 ```
 
 ## Quick Start
 
-The easiest way to start both backend and frontend:
+### Option 1: Docker (Recommended)
+
+The easiest way to get started is using Docker Compose:
+
+1. **Prerequisites**: 
+   - Docker and Docker Compose installed
+   - OpenAI API key
+
+2. **Set up your OpenAI API key**:
+   
+   **Option A**: Export as environment variable:
+   ```bash
+   export OPENAI_API_KEY=sk-your-openai-api-key
+   ```
+   
+   **Option B**: Create a `.env` file in the `backend` directory:
+   ```bash
+   echo "OPENAI_API_KEY=sk-your-openai-api-key" > backend/.env
+   ```
+   
+   Docker Compose will automatically load the API key from either the environment variable or the `backend/.env` file.
+
+3. **Start the application**:
+   ```bash
+   docker-compose up --build
+   ```
+
+4. **Access the application**:
+   - Frontend: http://localhost:4200
+   - Backend API: http://localhost:8000
+   - API Docs: http://localhost:8000/docs
+
+5. **Stop the application**:
+   ```bash
+   docker-compose down
+   ```
+
+**Note**: The first build may take a few minutes as it installs all dependencies. Subsequent starts will be much faster.
+
+### Option 2: Start Script
+
+For local development without Docker:
 
 1. Set up your OpenAI API key:
 ```bash
@@ -160,13 +206,13 @@ Highlight,Book Title,Book Author,Tags
 
 ## Usage
 
-### Using the Start Script (Recommended)
+### Using Docker (Recommended)
 
-1. Make sure you have set up your OpenAI API key in `backend/.env`
-2. Run from the project root:
-```bash
-./start.sh
-```
+1. Make sure Docker is running and you have set your `OPENAI_API_KEY` environment variable
+2. Start the containers:
+   ```bash
+   docker-compose up --build
+   ```
 3. Open `http://localhost:4200` in your browser
 4. Upload a CSV file with your highlights:
    - Click the "CSV" button to open the upload dialog
@@ -182,6 +228,16 @@ Highlight,Book Title,Book Author,Tags
    - Ask questions about your highlights in natural language
    - Receive AI-generated responses based on the top 10 most relevant highlights
    - Chat history is maintained during your session
+
+### Using the Start Script
+
+1. Make sure you have set up your OpenAI API key in `backend/.env`
+2. Run from the project root:
+```bash
+./start.sh
+```
+3. Open `http://localhost:4200` in your browser
+4. Follow steps 4-6 from the Docker section above
 
 ### Manual Start
 
@@ -267,6 +323,53 @@ cd frontend
 npm start
 ```
 
+## Docker Deployment
+
+### Building and Running with Docker
+
+The application is fully containerized and can be run with Docker Compose:
+
+```bash
+# Build and start all services
+docker-compose up --build
+
+# Start in detached mode (background)
+docker-compose up -d --build
+
+# Stop all services
+docker-compose down
+
+# View logs
+docker-compose logs -f
+
+# Rebuild after code changes
+docker-compose up --build
+```
+
+### Docker Architecture
+
+- **Backend Container**: Python 3.9 with FastAPI, runs on port 8000
+- **Frontend Container**: Nginx serving built Angular app, runs on port 4200
+- **Data Persistence**: ChromaDB data is stored in `backend/chroma_db/` volume
+- **Networking**: Services communicate via Docker's internal network
+- **Health Checks**: Backend includes health checks to ensure proper startup
+
+### Environment Configuration
+
+The `OPENAI_API_KEY` can be provided in two ways:
+
+1. **Environment Variable** (recommended for CI/CD):
+   ```bash
+   export OPENAI_API_KEY=sk-your-key
+   docker-compose up
+   ```
+
+2. **`.env` File** (for local development):
+   ```bash
+   echo "OPENAI_API_KEY=sk-your-key" > backend/.env
+   docker-compose up
+   ```
+
 ## Features in Detail
 
 ### Upload Dialog
@@ -290,9 +393,11 @@ npm start
 
 ## Notes
 
-- ChromaDB stores data locally in the `backend/chroma_db/` directory
-- OpenAI API key is required for storing highlights, searching, and RAG chat
-- The API key should be set in environment variables or a `.env` file
-- Embeddings are generated using OpenAI's text-embedding-3-small model (default)
-- RAG mode uses GPT-3.5-turbo for generating responses
-- When RAG mode is enabled, search queries are processed as chat messages instead of table searches
+- **Docker**: When running with Docker, the frontend uses `/api` path which is proxied to the backend by nginx
+- **Local Development**: When running locally, Angular's proxy configuration routes `/api` requests to `http://localhost:8000`
+- **Data Persistence**: ChromaDB stores data locally in the `backend/chroma_db/` directory (persisted via Docker volumes when using Docker)
+- **OpenAI API Key**: Required for storing highlights, searching, and RAG chat
+- **API Key Configuration**: Can be set via environment variable or `backend/.env` file
+- **Embeddings**: Generated using OpenAI's text-embedding-3-small model (default)
+- **RAG Mode**: Uses GPT-3.5-turbo for generating responses based on top 10 semantic search results
+- **Mode Switching**: When RAG mode is enabled, search queries are processed as chat messages instead of table searches

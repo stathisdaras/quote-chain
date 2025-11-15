@@ -2,7 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpEvent } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-const API_URL = 'http://localhost:8000';
+// Use '/api' for Docker (proxied by nginx), 'http://localhost:8000' for local development
+const API_URL = '/api';
 
 export interface SearchRequest {
   prompt: string;
